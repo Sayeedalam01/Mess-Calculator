@@ -1,14 +1,14 @@
 const MEMBERS = ["Sayeed", "Saklain", "Shishir", "Farhan"];
-const ADMIN_ID = "sayeed"; // Admin/Manager is Sayeed
-const STORAGE_KEY_MEALS = 'messMealsData';
-const STORAGE_KEY_EXPENSES = 'messExpensesData';
+const ADMIN_ID = "Sayeed";
+// <<<<< আপনার Web App URL এখানে দিন >>>>>
+const API_ENDPOINT = https://script.google.com/macros/s/AKfycbwTlTqtlYo-jKOAt3DeRJPUJIAPuQkQhLW24P5vQvlVwOdR7-npsm5kIOS4Y3z5JlBmHQ/exec; 
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('current-date').textContent = new Date().toLocaleDateString('bn-BD', {
         year: 'numeric', month: 'long', day: 'numeric'
     });
-    updateUI(); // Set initial view based on default role
+    updateUI(); 
 });
 
 // --- UI AND AUTHENTICATION ---
@@ -16,61 +16,57 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateUI() {
     const role = document.getElementById('user-role').value;
     const isSayeed = (role === ADMIN_ID);
-    const isMember = (role === 'member');
     
     document.getElementById('bazar-entry').style.display = isSayeed ? 'block' : 'none';
     document.getElementById('admin-panel').style.display = isSayeed ? 'block' : 'none';
-    document.getElementById('all-entries-view').style.display = 'none'; // Hide entry list initially
-    
-    // Member Meal Entry (Everyone can enter their own)
+    document.getElementById('all-entries-view').style.display = 'none'; 
     document.getElementById('meal-entry').style.display = 'block';
-    
-    // In a real system, you'd use a password/proper login. Here we use a simple dropdown.
-    if (isMember) {
-        // A member can only enter their own meal (simple version)
-        const select = document.getElementById('meal-member-select');
-        select.innerHTML = '';
-        const selectedMember = MEMBERS.find(m => m === getMemberFromDropdown(role)); // Assuming 'member' role is general
-        
-        // Simple authentication: If "member" is selected, they can select anyone to log.
-        // For a tighter structure: Only let them log their name, but for this simple setup, let them choose.
-        MEMBERS.forEach(member => {
-             const option = document.createElement('option');
-             option.value = member;
-             option.textContent = member;
-             select.appendChild(option);
-        });
+}
+
+// --- API FUNCTIONS ---
+
+async function fetchData(sheetName) {
+    try {
+        const response = await fetch(`${API_ENDPOINT}?sheet=${sheetName}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    } catch (error) {
+        alert('ডেটা লোড করতে সমস্যা হয়েছে: ' + error.message);
+        console.error('Fetch error:', error);
+        return [];
     }
 }
 
-// Helper to get the member name from the selected dropdown role (simple auth)
-function getMemberFromDropdown(role) {
-    if (role === ADMIN_ID) return 'Sayeed';
-    // In a real system, you'd know the user's name from their login.
-    return document.getElementById('meal-member-select').value;
-}
-
-// --- DATA MANAGEMENT (Local Storage) ---
-
-function getMeals() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY_MEALS) || '[]');
-}
-
-function getExpenses() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY_EXPENSES) || '[]');
-}
-
-function saveMeals(data) {
-    localStorage.setItem(STORAGE_KEY_MEALS, JSON.stringify(data));
-}
-
-function saveExpenses(data) {
-    localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(data));
+async function postData(sheetName, data) {
+    const role = document.getElementById('user-role').value;
+    data.isAdmin = (role === ADMIN_ID);
+    
+    try {
+        const response = await fetch(`${API_ENDPOINT}?sheet=${sheetName}`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8', // Important for Apps Script POST
+            }
+        });
+        const result = await response.json();
+        
+        if (result.status === 'error') {
+            alert(result.message); // Displays the "already logged" message from Apps Script
+            return false;
+        }
+        return true;
+        
+    } catch (error) {
+        alert('ডেটা সেভ করতে সমস্যা হয়েছে: ' + error.message);
+        console.error('Post error:', error);
+        return false;
+    }
 }
 
 // --- MEAL ENTRY ---
 
-function addMealEntry() {
+async function addMealEntry() {
     const member = document.getElementById('meal-member-select').value;
     const count = parseFloat(document.getElementById('meal-count').value);
     
@@ -79,43 +75,18 @@ function addMealEntry() {
         return;
     }
     
-    const meals = getMeals();
-    const today = new Date().toDateString();
+    const mealData = { member, count };
+    const success = await postData('Meals', mealData);
     
-    // Check if meal for this member has already been logged today by a NON-ADMIN (as per your rule)
-    // NOTE: This is a simplified check. A proper system would need more robust tracking.
-    // For now: Sayeed (admin) can edit/add any meal, members cannot edit their own on the same day if one exists.
-    
-    const existingEntryIndex = meals.findIndex(e => e.member === member && e.date === today);
-    const role = document.getElementById('user-role').value;
-    
-    if (existingEntryIndex !== -1) {
-        if (role === ADMIN_ID) {
-            // Admin can overwrite/edit (Simplification: we'll overwrite)
-            meals[existingEntryIndex].count = count;
-            alert(`${member}-এর আজকের মিল এন্ট্রি পরিবর্তন করা হয়েছে (এডমিন দ্বারা)।`);
-        } else {
-            alert(`${member} আপনি আজকের মিল (${meals[existingEntryIndex].count}) ইতিমধ্যে যোগ করেছেন। এটি শুধুমাত্র এডমিন পরিবর্তন করতে পারবে।`);
-            return;
-        }
-    } else {
-        // New entry
-        meals.push({
-            member: member,
-            count: count,
-            date: today,
-            timestamp: Date.now()
-        });
+    if (success) {
         alert(`${member}-এর জন্য ${count} মিল যোগ করা হলো।`);
+        document.getElementById('meal-count').value = '1';
     }
-
-    saveMeals(meals);
-    document.getElementById('meal-count').value = '1';
 }
 
 // --- EXPENSE ENTRY (Bazar/Utility) ---
 
-function addExpense() {
+async function addExpense() {
     const member = document.getElementById('bazar-member-select').value;
     const amount = parseFloat(document.getElementById('bazar-amount').value);
     const note = document.getElementById('bazar-note').value.trim();
@@ -125,30 +96,30 @@ function addExpense() {
         return;
     }
     
-    const expenses = getExpenses();
+    const expenseData = { member, amount, note };
+    const success = await postData('Expenses', expenseData);
     
-    expenses.push({
-        member: member,
-        amount: amount,
-        note: note,
-        type: note.toLowerCase().includes('utility') || note.toLowerCase().includes('bill') ? 'Utility' : 'Bazar',
-        date: new Date().toDateString(),
-        timestamp: Date.now()
-    });
-    
-    saveExpenses(expenses);
-    alert(`${member}-এর জন্য ${amount} টাকা খরচ যোগ করা হলো (${note})।`);
-
-    document.getElementById('bazar-amount').value = '';
-    document.getElementById('bazar-note').value = '';
+    if (success) {
+        alert(`${member}-এর জন্য ${amount} টাকা খরচ যোগ করা হলো (${note})।`);
+        document.getElementById('bazar-amount').value = '';
+        document.getElementById('bazar-note').value = '';
+    }
 }
 
-// --- CALCULATION LOGIC ---
+// --- CALCULATION LOGIC (Uses Fetched Data) ---
 
-function calculateMonthlyBill() {
-    const allMeals = getMeals();
-    const allExpenses = getExpenses();
+async function calculateMonthlyBill() {
+    document.getElementById('total-stats').textContent = "হিসাব করা হচ্ছে... ⏳";
     
+    const allMeals = await fetchData('Meals');
+    const allExpenses = await fetchData('Expenses');
+    
+    if (allMeals.length === 0 && allExpenses.length === 0) {
+         document.getElementById('total-stats').textContent = "কোনো এন্ট্রি নেই, হিসাব করা সম্ভব নয়।";
+         document.getElementById('balance-result').textContent = "";
+         return;
+    }
+
     // 1. Calculate Total Bazar, Total Utility, Total Meals, and Per-Person contributions
     let totalBazar = 0;
     let totalUtility = 0;
@@ -159,20 +130,25 @@ function calculateMonthlyBill() {
     
     // Group Expenses
     allExpenses.forEach(exp => {
-        if (exp.type === 'Bazar') {
-            totalBazar += exp.amount;
-            memberData[exp.member].bazar += exp.amount;
-        } else if (exp.type === 'Utility') {
-            totalUtility += exp.amount;
-            memberData[exp.member].utility += exp.amount;
+        const amount = parseFloat(exp.Amount);
+        const member = exp.Member;
+        
+        if (exp.Type === 'Bazar') {
+            totalBazar += amount;
+            memberData[member].bazar += amount;
+        } else if (exp.Type === 'Utility') {
+            totalUtility += amount;
+            memberData[member].utility += amount;
         }
-        memberData[exp.member].totalPaid += exp.amount;
+        memberData[member].totalPaid += amount;
     });
     
     // Group Meals
     allMeals.forEach(meal => {
-        totalMeals += meal.count;
-        memberData[meal.member].meals += meal.count;
+        const count = parseFloat(meal.Count);
+        const member = meal.Member;
+        totalMeals += count;
+        memberData[member].meals += count;
     });
     
     if (totalMeals === 0) {
@@ -218,13 +194,19 @@ function calculateMonthlyBill() {
 
 // --- ADMIN FEATURES ---
 
-function showAllEntries() {
-    const meals = getMeals();
-    const expenses = getExpenses();
+async function showAllEntries() {
+    const meals = await fetchData('Meals');
+    const expenses = await fetchData('Expenses');
     const listElement = document.getElementById('entries-list');
     listElement.innerHTML = '';
     
-    const allEntries = [...meals, ...expenses].sort((a, b) => b.timestamp - a.timestamp); // Combine and sort by newest
+    // Prepare for combined display (for now, display separately for simplicity)
+    const allEntries = [];
+    
+    meals.forEach(e => allEntries.push({ date: e.Date, member: e.Member, text: `মিল: ${e.Count}টি`, timestamp: e.Timestamp }));
+    expenses.forEach(e => allEntries.push({ date: e.Date, member: e.Member, text: `${e.Type} খরচ: ${e.Amount} টাকা (${e.Note})`, timestamp: new Date(e.Date).getTime() }));
+
+    allEntries.sort((a, b) => b.timestamp - a.timestamp); // Sort by newest (using timestamp where available)
     
     if (allEntries.length === 0) {
         listElement.innerHTML = '<li>কোনো এন্ট্রি নেই।</li>';
@@ -234,15 +216,7 @@ function showAllEntries() {
     
     allEntries.forEach(entry => {
         const listItem = document.createElement('li');
-        let text = `[${entry.date}] - ${entry.member}: `;
-        
-        if (entry.count !== undefined) {
-            text += `মিল: ${entry.count}টি`;
-        } else if (entry.amount !== undefined) {
-            text += `${entry.type} খরচ: ${entry.amount.toFixed(2)} টাকা (${entry.note})`;
-        }
-        
-        listItem.textContent = text;
+        listItem.textContent = `[${entry.date}] - ${entry.member}: ${entry.text}`;
         listElement.appendChild(listItem);
     });
 
@@ -250,12 +224,5 @@ function showAllEntries() {
 }
 
 function resetData() {
-    if (confirm("আপনি কি নিশ্চিত? মাস শেষে সম্পূর্ণ ডেটা (মিল ও খরচ) রিসেট হবে। এই প্রক্রিয়া ফিরিয়ে আনা যাবে না।")) {
-        localStorage.removeItem(STORAGE_KEY_MEALS);
-        localStorage.removeItem(STORAGE_KEY_EXPENSES);
-        alert("ডেটা সফলভাবে রিসেট করা হয়েছে! নতুন মাস শুরু করুন।");
-        document.getElementById('total-stats').textContent = "";
-        document.getElementById('balance-result').textContent = "";
-        document.getElementById('entries-list').innerHTML = "";
-    }
+    alert("Google Sheets-এ ডেটা রিসেট করার জন্য Apps Script-এ একটি DELETE ফাংশন তৈরি করতে হবে, যা নিরাপত্তার কারণে এই সহজ কাঠামোতে অন্তর্ভুক্ত করা হয়নি। আপনি সরাসরি Google Sheet থেকে ডেটা (Header বাদে বাকি রো গুলো) ম্যানুয়ালি মুছে দিন।");
 }
