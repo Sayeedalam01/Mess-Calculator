@@ -1,7 +1,7 @@
 const MEMBERS = ["Sayeed", "Saklain", "Shishir", "Farhan"];
 const ADMIN_ID = "Sayeed";
 // <<<<< আপনার Web App URL এখানে দিন >>>>>
-const API_ENDPOINT = https://script.google.com/macros/s/AKfycbwTlTqtlYo-jKOAt3DeRJPUJIAPuQkQhLW24P5vQvlVwOdR7-npsm5kIOS4Y3z5JlBmHQ/exec; 
+const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwTlTqtlYo-jKOAt3DeRJPUJIAPuQkQhLW24P5vQvlVwOdR7-npsm5kIOS4Y3z5JlBmHQ/exec'; 
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
