@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>মেস ক্যালকুলেটর (Mess Calculator)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>মেস ক্যালকুলেটর 🏡</h1>
+        <p id="current-date"></p>
+        
+        <select id="user-role" onchange="updateUI()">
+            <option value="member">মেম্বার</option>
+            <option value="sayeed">এডমিন (সাঈদ)</option>
+        </select>
+
+        <div id="meal-entry" class="card">
+            <h2>মিল এন্ট্রি (আজকের)</h2>
+            <select id="meal-member-select">
+                <option value="Sayeed">সাঈদ</option>
+                <option value="Saklain">সাকলাইন</option>
+                <option value="Shishir">শিশির</option>
+                <option value="Farhan">ফারহান</option>
+            </select>
+            <input type="number" id="meal-count" placeholder="কয়টা মিল?" min="0" value="1">
+            <button onclick="addMealEntry()">মিল যোগ করুন</button>
+        </div>
+
+        <div id="bazar-entry" class="card">
+            <h2>বাজার/খরচ এন্ট্রি</h2>
+            <select id="bazar-member-select">
+                <option value="Sayeed">সাঈদ</option>
+                <option value="Saklain">সাকলাইন</option>
+                <option value="Shishir">শিশির</option>
+                <option value="Farhan">ফারহান</option>
+            </select>
+            <input type="number" id="bazar-amount" placeholder="টাকার পরিমাণ" min="0">
+            <input type="text" id="bazar-note" placeholder="নোট (যেমন: মাছ, গ্যাস বিল)">
+            <button onclick="addExpense()">খরচ যোগ করুন</button>
+        </div>
+
+        <div class="card result-card">
+            <h2>মাসিক হিসাব 📊</h2>
+            <button onclick="calculateMonthlyBill()">হিসাব করুন</button>
+            <p id="total-stats"></p>
+            <pre id="balance-result"></pre>
+        </div>
+        
+        <div id="admin-panel" class="card admin-area">
+            <h2>এডমিন টুলস (সাঈদ)</h2>
+            <button onclick="showAllEntries()">সকল এন্ট্রি দেখুন</button>
+            <button onclick="resetData()">মাসিক ডেটা রিসেট করুন (সাবধান!)</button>
+        </div>
+
+        <div id="all-entries-view" class="card admin-area" style="display: none;">
+            <h3>সকল এন্ট্রি</h3>
+            <ul id="entries-list">
+                </ul>
+        </div>
+        
+        <div class="footer">
+            <p>আপনার Android অ্যাপের Logic দ্বারা তৈরি।</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
